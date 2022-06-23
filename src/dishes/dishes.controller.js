@@ -11,51 +11,54 @@ function list(req, res) {
   res.json({ data: dishes });
 }
 
-function bodyDataHas(propertyName) {
-  return function (req, res, next) {
-    const { data = {} } = req.body;
-    if (data[propertyName]) {
-      return next();
-    }
-    next({
-      status: 400,
-      message: `Must include a ${propertyName}`,
-    });
-  };
+function bodyHasNameProperty(req, res, next) {
+  const { data: { name } = {} } = req.body;
+  if (name && name.length > 0) {
+    return next();
+  }
+  next({
+    status: 400,
+    message: "A 'name' property is required.",
+  });
 }
 
-// //validation for name, description, image_url
-// function propertyMustBeDefined(propertyName) {
-//   return function (req, res, next) {
-//     const {
-//       data: {},
-//     } = req.body;
-//     if (data[propertyName] !== undefined) {
-//       return next();
-//     }
-//     next({
-//       status: 400,
-//       message: `Must include a ${propertyName}`,
-//     });
-//   };
-// }
-
-//price validation
-function priceIsValidNumber(req, res, next) {
-  const { data: { price } = {} } = req.body;
-  if (price <= 0 || !Number.isInteger(price)) {
-    return next({
-      status: 400,
-      message: `Expiration requires a valid number`,
-    });
+function bodyHasDescriptionProperty(req, res, next) {
+  const { data: { description } = {} } = req.body;
+  if (description && description.length > 0) {
+    return next();
   }
-  next();
+  next({
+    status: 400,
+    message: "A 'description' property is required.",
+  });
+}
+
+function bodyHasImageProperty(req, res, next) {
+  const { data: { image_url } = {} } = req.body;
+  if (image_url && image_url.length > 0) {
+    return next();
+  }
+  next({
+    status: 400,
+    message: "A 'image_url' property is required.",
+  });
+}
+
+function bodyHasPriceProperty(req, res, next) {
+  const { data: { price } = {} } = req.body;
+  if (price && price > 0 && Number.isInteger(price)) {
+    return next();
+  }
+  next({
+    status: 400,
+    message: "A 'price' property is required.",
+  });
 }
 
 function create(req, res) {
   const { data: { name, description, price, image_url } = {} } = req.body;
   const newDish = {
-    id: dishes.length + 1,
+    id: nextId(),
     name,
     description,
     price,
@@ -66,9 +69,10 @@ function create(req, res) {
 }
 
 function dishExists(req, res, next) {
-  const dishId = Number(req.params.dishId);
+  const { dishId } = req.params;
   const foundDish = dishes.find((dish) => dish.id === dishId);
   if (foundDish) {
+    res.locals.dish = foundDish;
     return next();
   }
   next({
@@ -76,9 +80,10 @@ function dishExists(req, res, next) {
     message: `Dish id not found: ${dishId}`,
   });
 }
+
 //read
 function read(req, res) {
-  const dishId = Number(req.params.dishId);
+  const { dishId } = req.params;
   const foundDish = dishes.find((dish) => dish.id === dishId);
   res.json({ data: foundDish });
 }
@@ -92,30 +97,35 @@ function update(req, res) {
   //update the dish
   foundDish.name = name;
   foundDish.description = description;
-  foundDish.price = price;
-  foundDish.image_url = image_url;
+  if (typeof price == "number") {
+    foundDish.price = price;
+  } else {
+    next({
+      status: 400,
+      message: `Price is not a number.`,
+    });
+  }
 
+  foundDish.image_url = image_url;
   res.json({ data: foundDish });
 }
 
 module.exports = {
   create: [
-    bodyDataHas("name"),
-    bodyDataHas("description"),
-    bodyDataHas("price"),
-    bodyDataHas("image_url"),
-    priceIsValidNumber,
+    bodyHasNameProperty,
+    bodyHasDescriptionProperty,
+    bodyHasPriceProperty,
+    bodyHasImageProperty,
     create,
   ],
   list,
   read: [dishExists, read],
   update: [
     dishExists,
-    bodyDataHas("name"),
-    bodyDataHas("description"),
-    bodyDataHas("price"),
-    bodyDataHas("image_url"),
-    priceIsValidNumber,
+    bodyHasNameProperty,
+    bodyHasDescriptionProperty,
+    bodyHasPriceProperty,
+    bodyHasImageProperty,
     update,
   ],
 };

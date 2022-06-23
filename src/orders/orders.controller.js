@@ -28,6 +28,7 @@ function read(req, res) {
   const foundOrder = orders.find((order) => order.id === orderId);
   res.json({ data: foundOrder });
 }
+//middleware to check if propertyName exists
 function bodyDataHas(propertyName) {
   return function (req, res, next) {
     const { data = {} } = req.body;
@@ -36,6 +37,56 @@ function bodyDataHas(propertyName) {
     }
     next({ status: 400, message: `Must include a ${propertyName}` });
   };
+}
+
+//middleware functions to check if property is empty
+
+function deliverToIsEmpty(req, res, next) {
+  const { data: { deliverTo } = {} } = req.body;
+  if (deliverTo === "") {
+    next({
+      status: 400,
+      message: `Order must include ${deliverTo}`,
+    });
+  }
+  return next();
+}
+
+function mobileNumberIsEmpty(req, res, next) {
+  const { data: { mobileNumber } = {} } = req.body;
+  if (mobileNumber === "") {
+    next({
+      status: 400,
+      message: `Order must include ${mobileNumber}`,
+    });
+  }
+  return next();
+}
+
+//check if dishes property is not an arry or is empty
+function validateDishes(req, res, next) {
+  const { data: { dishes } = {} } = req.body;
+  if (Array.isArray(dishes) || dishes.length <= 0) {
+    next({
+      status: 400,
+      message: `Order must include a dish.`,
+    });
+  }
+}
+
+//middleware function to check if dish quantity is zero or less or if quantity property is not an integer
+function invalidQuantity(req, res, next) {
+  const { data: { dishes } = {} } = req.body;
+  const notValidQuantity = dishes.find(
+    (dish) => dish.quantity <= 0 || !Number.isInteger(dish.quantity)
+  );
+  if (notValidQuantity) {
+    notValidQuantity.index = dishes.indexOf(notValidQuantity);
+    next({
+      status: 400,
+      message: `Dish ${notValidQuantity} must have a quanity that is an integer and greater than 0`,
+    });
+  }
 }
 
 function idIsValid(req, res, next) {
@@ -62,6 +113,22 @@ function statusIsValid(req, res, next) {
   });
 }
 
+function create(req, res) {
+  const { data: { deliverTo, mobileNumber, quantity, ...dishes } = {} } =
+    req.body;
+  if ((deliverTo, mobileNumber, dishes, quantity)) {
+    const newOrder = {
+      id: nextId,
+      deliverTo,
+      mobileNumber,
+      quantity,
+      dishes: dishes,
+    };
+    orders.push(newOrder);
+    res.status(201).json({ data: newOrder });
+  }
+}
+
 function update(req, res) {
   const orderId = Number(req.params.orderId);
   const foundOrder = orders.find((order) => order.id === orderId);
@@ -70,12 +137,23 @@ function update(req, res) {
   } = req.body;
 
   //update order
-  foundOrder.id = orderId;
+  foundOrder.id = nextId();
   foundOrder.status = status;
 }
 
 module.exports = {
   list,
-  read,
+  read: [orderExists, read],
+  create: [
+    bodyDataHas("deliverTo"),
+    bodyDataHas("mobileNumber"),
+    bodyDataHas("dishes"),
+    bodyDataHas("quantity"),
+    deliverToIsEmpty,
+    mobileNumberIsEmpty,
+    validateDishes,
+    invalidQuantity,
+    create,
+  ],
   update: [bodyDataHas("status"), statusIsValid, update],
 };
