@@ -88,29 +88,37 @@ function read(req, res) {
   res.json({ data: foundDish });
 }
 
-//update
-function update(req, res) {
+function ifBodyHasId(req, res, next) {
   const { dishId } = req.params;
-  const foundDish = dishes.find((dish) => dish.id === Number(dishId));
-  const { data: { name, description, price, image_url } = {} } = req.body;
-
-  //update the dish
-  foundDish.name = name;
-  foundDish.description = description;
-  if (typeof price == "number") {
-    foundDish.price = price;
+  const { data: { id } = {} } = req.body;
+  if (!id || id === dishId) {
+    return next();
   } else {
     next({
       status: 400,
-      message: `Price is not a number.`,
+      message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`,
     });
   }
+}
 
+//update
+function update(req, res) {
+  //   const { dishId } = req.params.dishId;
+  //   const foundDish = dishes.find((dish) => dish.id === Number(dishId));
+  //   const { data: { name, description, price, image_url } = {} } = req.body;
+  const foundDish = res.locals.dish;
+  const { data: { name, description, price, image_url } = {} } = req.body;
+  //update the dish
+  foundDish.name = name;
+  foundDish.description = description;
+  foundDish.price = price;
   foundDish.image_url = image_url;
-  res.json({ data: foundDish });
+
+  res.status(200).json({ data: foundDish });
 }
 
 module.exports = {
+  list,
   create: [
     bodyHasNameProperty,
     bodyHasDescriptionProperty,
@@ -118,10 +126,10 @@ module.exports = {
     bodyHasImageProperty,
     create,
   ],
-  list,
   read: [dishExists, read],
   update: [
     dishExists,
+    ifBodyHasId,
     bodyHasNameProperty,
     bodyHasDescriptionProperty,
     bodyHasPriceProperty,
