@@ -83,9 +83,9 @@ function idIsValid(req, res, next) {
 }
 
 function isStatusPending(req, res, next) {
-  const status = res.locals.order.status;
+  const order = res.locals.order;
 
-  if (status !== "pending") {
+  if (order.status !== "pending") {
     next({
       status: 400,
       message: "An order cannot be deleted unless it is pending",
@@ -143,9 +143,7 @@ function update(req, res) {
 function destroy(req, res) {
   const orderId = Number(req.params.orderId);
   const index = orders.findIndex((order) => order.id === orderId);
-  if (index > -1) {
-    orders.splice(index);
-  }
+  orders.splice(index, 1);
   res.sendStatus(204);
 }
 
