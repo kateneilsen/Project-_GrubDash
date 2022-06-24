@@ -56,16 +56,18 @@ function validateDishes(req, res, next) {
 
 function validateQuantity(req, res, next) {
   const { data: { dishes } = {} } = req.body;
-  dishes.forEach((dish) => {
+
+  for (let i = 0; i < dishes.length; i++) {
+    const dish = dishes[i];
     const quantity = dish.quantity;
-    if (quantity && quantity > 0 && Number.isInteger(quantity)) {
-      return next();
+    if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
+      return next({
+        status: 400,
+        message: `Dish ${i} must have a quantity that is an integer greater than 0`,
+      });
     }
-  });
-  next({
-    status: 400,
-    message: "A 'quantity' property is required.",
-  });
+  }
+  return next();
 }
 
 function idIsValid(req, res, next) {
@@ -115,7 +117,7 @@ function read(req, res) {
 function create(req, res) {
   const { data: { deliverTo, mobileNumber, status, dishes } = {} } = req.body;
   const newOrder = {
-    id: nextId,
+    id: nextId(),
     deliverTo,
     mobileNumber,
     status,
@@ -126,13 +128,12 @@ function create(req, res) {
 }
 
 function update(req, res) {
-  const orderId = Number(req.params.orderId);
+  const { orderId } = req.params;
   const foundOrder = orders.find((order) => order.id === orderId);
   const { data: { deliverTo, mobileNumber, status, dishes } = {} } = req.body;
 
   //update order
-  foundOrder.id,
-    (foundOrder.deliverTo = deliverTo),
+  (foundOrder.deliverTo = deliverTo),
     (foundOrder.mobileNumber = mobileNumber),
     (foundOrder.status = status),
     (foundOrder.dishes = dishes),
